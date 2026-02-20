@@ -21,8 +21,10 @@ if not API_KEY:
 URL = "https://sky-scrapper.p.rapidapi.com/api/v2/flights/searchFlights"
 
 QUERYSTRING = {
-    "originSkyId": "STR",
+    "originSkyId": "FRA",
     "destinationSkyId": "FNC",
+    "originEntityId": "27541706",
+    "destinationEntityId": "95674222",
     "date": "2026-05-25",
     "returnDate": "2026-05-31",
     "cabinClass": "economy",
