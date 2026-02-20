@@ -1,18 +1,18 @@
 import csv
 import json
 import os
+import requests
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import requests
 
-# ==============================
-# 0️⃣ Konfiguration
-# ==============================
+# ================================
+# Konfiguration
+# ================================
 API_HOST = "booking-com15.p.rapidapi.com"
 API_KEY = os.getenv("API_KEY")
 
-URL = f"https://{API_HOST}/api/v1/flights/searchFlights"
+URL = f"https://booking-com15.p.rapidapi.com/api/v1/flights/searchFlights"
 
 PARAMS = {
     "fromId": "FRA.AIRPORT",
@@ -36,9 +36,9 @@ CSV_FILE = "flight_prices.csv"
 JSON_FILE = "data.json"
 CHART_FILE = "price_chart.png"
 
-# ==============================
+# ================================
 # 1️⃣ Preis abrufen
-# ==============================
+# ================================
 def fetch_price(params=PARAMS):
     try:
         response = requests.get(URL, headers=HEADERS, params=params, timeout=15)
@@ -57,10 +57,11 @@ def fetch_price(params=PARAMS):
         print("Keine Flugangebote gefunden.")
         return None
 
-    # genaues departDate filtern
+    # exaktes departDate filtern
     offer_today = None
     for offer in flight_offers:
-        depart_date = offer["segments"][0]["departureTime"].split("T")[0]
+        depart_time = offer["segments"][0]["departureTime"]
+        depart_date = depart_time.split("T")[0]
         if depart_date == params["departDate"]:
             offer_today = offer
             break
@@ -69,6 +70,7 @@ def fetch_price(params=PARAMS):
         print("Kein Angebot am gewünschten Datum.")
         return None
 
+    # Gesamtpreis
     price_total = offer_today.get("priceBreakdown", {}).get("total")
     if not price_total:
         print("Kein Preis im Angebot gefunden.")
@@ -78,74 +80,80 @@ def fetch_price(params=PARAMS):
     nanos = price_total.get("nanos", 0)
     total_price = units + nanos / 1_000_000_000
 
-    # Preis pro Person berechnen
-    per_person_price = total_price / PARAMS["adults"]
-
     airline = offer_today["segments"][0]["legs"][0]["carriersData"][0]["name"]
+    departure_time = offer_today["segments"][0]["departureTime"]  # ISO datetime
 
     return {
-        "date_str": offer_today["segments"][0]["departureTime"].split("T")[0],
-        "price": round(per_person_price, 2),
+        "date_str": departure_time,
+        "price": round(total_price, 2),
         "airline": airline
     }
 
-# ==============================
+# ================================
 # 2️⃣ CSV speichern
-# ==============================
+# ================================
 def save_csv(data, file=CSV_FILE):
-    fieldnames = ["date", "price", "airline"]
+    fieldnames = ["date", "time", "price", "airline"]
+    date_part = data["date_str"].split("T")[0]
+    time_part = data["date_str"].split("T")[1] if "T" in data["date_str"] else ""
+
     try:
         with open(file, "a", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             if f.tell() == 0:
                 writer.writeheader()
             writer.writerow({
-                "date": data["date_str"],
-                "price": data["price"],
+                "date": date_part,
+                "time": time_part,
+                "price": round(data["price"]/2,2),  # pro Person
                 "airline": data["airline"]
             })
-        print(f"Preis pro Person gespeichert: {data['price']} EUR am {data['date_str']}")
+        print(f"Preis gespeichert: {round(data['price']/2,2)} EUR pro Person am {date_part} {time_part}")
     except Exception as e:
         print("Fehler beim Speichern CSV:", e)
 
-# ==============================
-# 3️⃣ JSON speichern (Chart-kompatibel)
-# ==============================
+# ================================
+# 3️⃣ JSON speichern
+# ================================
 def save_json(data, file=JSON_FILE):
-    history = []
-    if os.path.exists(file):
-        try:
-            with open(file, "r") as f:
-                old_data = json.load(f)
-                history = old_data.get("history", [])
-        except:
-            history = []
-
-    # neuen Eintrag anhängen
-    history.append([data["date_str"], data["price"]])
-
-    prices = [p[1] for p in history]
-    json_data = {
-        "last_price": data["price"],
-        "history": history,
-        "average_price": sum(prices)/len(prices),
-        "min_price": min(prices),
-        "max_price": max(prices)
-    }
-
     try:
+        price_per_person = round(data["price"] / 2, 2)
+        date_time = data.get("date_str", "")
+        airline = data.get("airline", "–")
+
+        # Bestehende History laden
+        history = []
+        if os.path.exists(file):
+            with open(file, "r") as f:
+                existing = json.load(f)
+                history = existing.get("history", [])
+
+        history.append([date_time, price_per_person])
+
+        prices = [p[1] for p in history]
+        output = {
+            "last_price": price_per_person,
+            "airline": airline,
+            "history": history,
+            "average_price": round(sum(prices)/len(prices),2),
+            "min_price": round(min(prices),2),
+            "max_price": round(max(prices),2)
+        }
+
         with open(file, "w") as f:
-            json.dump(json_data, f, indent=2)
+            json.dump(output, f, indent=2)
+
         print("JSON aktualisiert.")
+
     except Exception as e:
         print("Fehler beim Speichern JSON:", e)
 
-# ==============================
+# ================================
 # 4️⃣ Analyse + Chart
-# ==============================
+# ================================
 def analyze_and_plot():
     try:
-        df = pd.read_csv(CSV_FILE, parse_dates=["date"])
+        df = pd.read_csv(CSV_FILE, parse_dates=[["date","time"]])
     except Exception as e:
         print("CSV konnte nicht gelesen werden:", e)
         return
@@ -154,36 +162,43 @@ def analyze_and_plot():
         print("Keine Daten zum Plotten.")
         return
 
-    df = df.sort_values("date")
+    df = df.sort_values("date_time")
     x = np.arange(len(df))
     y = df["price"].values
 
+    if len(y) < 2:
+        print("Zu wenige Daten für Trendlinie.")
+        plt.figure(figsize=(10,6))
+        plt.plot(df["date_time"], y, marker='o')
+        plt.savefig(CHART_FILE)
+        plt.close()
+        return
+
+    try:
+        z = np.polyfit(x, y, 1)
+        p = np.poly1d(z)
+    except np.linalg.LinAlgError:
+        print("Trendlinie konnte nicht berechnet werden.")
+        p = None
+
     plt.figure(figsize=(10, 6))
-    plt.plot(df["date"], y, marker='o', label="Preis pro Person")
-
-    # Trendlinie nur, wenn mehr als 1 Punkt
-    if len(df) > 1:
-        try:
-            z = np.polyfit(x, y, 1)
-            p = np.poly1d(z)
-            plt.plot(df["date"], p(x), linestyle="--", color="red", label="Trendlinie")
-        except np.linalg.LinAlgError as e:
-            print("Trendlinie konnte nicht berechnet werden:", e)
-
-    plt.xlabel("Datum")
-    plt.ylabel("Preis in EUR pro Person")
-    plt.title("Flugpreis-Entwicklung pro Person")
+    plt.plot(df["date_time"], y, marker='o', label="Preis pro Person")
+    if p is not None:
+        plt.plot(df["date_time"], p(x), linestyle="--", color="red", label="Trendlinie")
+    plt.xlabel("Datum / Zeit")
+    plt.ylabel("Preis in EUR")
+    plt.title("Flugpreis-Entwicklung FRA → FNC")
     plt.xticks(rotation=45)
     plt.grid(True)
     plt.legend()
     plt.tight_layout()
     plt.savefig(CHART_FILE)
-    print(f"Chart gespeichert: {CHART_FILE}")
     plt.close()
+    print(f"Chart gespeichert: {CHART_FILE}")
 
-# ==============================
+# ================================
 # 5️⃣ Main
-# ==============================
+# ================================
 def main():
     result = fetch_price()
     if result:

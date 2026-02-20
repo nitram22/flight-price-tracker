@@ -14,6 +14,7 @@
     .red { color:#f44336; }
     .stats { display:flex; justify-content:space-around; margin-top:10px; }
     .stats div { text-align:center; }
+    .airline { font-size:1.2em; margin-bottom:5px; }
   </style>
 </head>
 <body>
@@ -22,6 +23,7 @@
 <h2>FRA → FNC (25.05 – 31.05.2026)</h2>
 
 <div class="card">
+  <div class="airline" id="airline"></div>
   <p>Letzter Preis pro Person: <span id="last" class="price"></span> € <span id="trendArrow"></span></p>
   <div class="stats">
     <div>Durchschnitt<br><span id="avg"></span> €</div>
@@ -39,40 +41,41 @@
 fetch("data.json")
 .then(res => res.json())
 .then(data => {
-
   const history = data.history || [];
   if(history.length === 0) return;
 
-  const lastPrice = parseFloat(history[history.length-1][1]);
-  let prevPrice = lastPrice;
-  if(history.length > 1) {
-    prevPrice = parseFloat(history[history.length-2][1]);
-  }
+  // letzte Preis-Daten
+  const lastEntry = history[history.length-1];
+  const lastPrice = parseFloat(lastEntry[1]);
+  const lastDateTime = new Date(lastEntry[0]);
+  const prevPrice = history.length > 1 ? parseFloat(history[history.length-2][1]) : lastPrice;
+  const trendUp = lastPrice > prevPrice;
+  const trendArrow = trendUp ? '🔺' : '🔻';
+  const pctChange = ((lastPrice - parseFloat(history[0][1])) / parseFloat(history[0][1]) * 100).toFixed(2);
 
-  // Trend Pfeil
-  let trendArrow = '';
-  if(history.length > 1){
-    trendArrow = lastPrice > prevPrice ? '🔺' : (lastPrice < prevPrice ? '🔻' : '➡️');
-  } else {
-    trendArrow = '➡️';
-  }
+  // Airline anzeigen
+  document.getElementById("airline").innerText = "Airline: " + data.airline;
 
-  // Prozentuale Änderung
-  const pctChange = history.length > 1
-    ? ((lastPrice - parseFloat(history[0][1])) / parseFloat(history[0][1]) * 100).toFixed(2)
-    : 0;
-
-  // DOM aktualisieren
+  // Preis
   document.getElementById("last").innerText = lastPrice.toFixed(2);
-  document.getElementById("last").className = lastPrice > prevPrice ? 'price red' : 'price green';
+  document.getElementById("last").className = trendUp ? 'price red' : 'price green';
   document.getElementById("trendArrow").innerText = trendArrow;
+
+  // Statistiken
   document.getElementById("avg").innerText = data.average_price.toFixed(2);
   document.getElementById("min").innerText = data.min_price.toFixed(2);
   document.getElementById("max").innerText = data.max_price.toFixed(2);
   document.getElementById("pctChange").innerText = pctChange;
 
   // Chart Daten
-  const labels = history.map(x => x[0]);
+  const labels = history.map(x => {
+    const d = new Date(x[0]);
+    const day = String(d.getDate()).padStart(2,'0');
+    const month = String(d.getMonth()+1).padStart(2,'0');
+    const hours = String(d.getHours()).padStart(2,'0');
+    const minutes = String(d.getMinutes()).padStart(2,'0');
+    return `${day}-${month} ${hours}:${minutes}`;
+  });
   const prices = history.map(x => parseFloat(x[1]));
 
   new Chart(document.getElementById("chart"), {
