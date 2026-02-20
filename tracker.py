@@ -7,9 +7,9 @@ import pandas as pd
 import requests
 
 API_HOST = "booking-com15.p.rapidapi.com"
-API_KEY = "DEIN_RAPIDAPI_KEY"
+API_KEY = os.getenv("API_KEY")
 
-URL = "https://booking-com15.p.rapidapi.com/api/v1/flights/searchFlights"
+URL = f"https://booking-com15.p.rapidapi.com/api/v1/flights/searchFlights"
 
 PARAMS = {
     "fromId": "FRA.AIRPORT",
