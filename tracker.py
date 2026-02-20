@@ -117,35 +117,31 @@ def save_csv(data, file=CSV_FILE):
 # 3️⃣ JSON speichern
 # ================================
 def save_json(data, file=JSON_FILE):
+    # aktuellen Abrufzeitpunkt
+    now = datetime.now()
+
+    # Preis pro Person berechnen
+    price_per_person = round(data["price"] / 2, 2)
+
+    data_to_save = {
+        "last_price": price_per_person,
+        "airline": data["airline"],
+        "history": [
+            [
+                now.strftime("%Y-%m-%dT%H:%M:%S"),  # Abrufzeitpunkt
+                price_per_person,
+                data["airline"]
+            ]
+        ],
+        "average_price": price_per_person,
+        "min_price": price_per_person,
+        "max_price": price_per_person
+    }
+
     try:
-        now_iso = datetime.now().isoformat(timespec='minutes')  # aktueller Abrufzeitpunkt
-        history_entry = [now_iso, data["price"], data["airline"]]  # Datum + Preis + Airline
-
-        # Alte History laden, falls vorhanden
-        if os.path.exists(file):
-            with open(file, "r") as f:
-                json_data = json.load(f)
-            history = json_data.get("history", [])
-        else:
-            history = []
-
-        # Neue History aktualisieren
-        history.append(history_entry)
-        last_price = data["price"]
-        prices = [h[1] for h in history]
-        json_data = {
-            "last_price": last_price,
-            "history": history,
-            "average_price": sum(prices)/len(prices),
-            "min_price": min(prices),
-            "max_price": max(prices)
-        }
-
         with open(file, "w") as f:
-            json.dump(json_data, f, indent=2)
-
+            json.dump(data_to_save, f, indent=2)
         print("JSON aktualisiert.")
-
     except Exception as e:
         print("Fehler beim Speichern JSON:", e)
 
