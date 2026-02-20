@@ -111,6 +111,74 @@ def main():
 
     save_price(price)
     analyze_and_plot()
+    generate_html()
+
+# =====================================
+# 4️⃣ HTML Seite generieren
+# =====================================
+
+def generate_html():
+    df = pd.read_csv(CSV_FILE)
+    avg_price = df["price"].mean()
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Flight Price Tracker</title>
+        <style>
+            body {{
+                font-family: Arial;
+                margin: 40px;
+                background-color: #f4f4f4;
+            }}
+            h1 {{
+                color: #333;
+            }}
+            table {{
+                border-collapse: collapse;
+                width: 100%;
+                background: white;
+            }}
+            th, td {{
+                border: 1px solid #ddd;
+                padding: 8px;
+                text-align: center;
+            }}
+            th {{
+                background-color: #333;
+                color: white;
+            }}
+            img {{
+                max-width: 100%;
+                height: auto;
+                background: white;
+                padding: 10px;
+            }}
+        </style>
+    </head>
+    <body>
+
+        <h1>Flugpreis Tracker</h1>
+        <h2>STR → FNC (25.05.2026 - 31.05.2026)</h2>
+
+        <p><strong>Durchschnittspreis:</strong> {avg_price:.2f} EUR</p>
+
+        <h3>Preisentwicklung</h3>
+        <img src="price_chart.png" alt="Preisentwicklung">
+
+        <h3>Historische Daten</h3>
+        {df.to_html(index=False)}
+
+    </body>
+    </html>
+    """
+
+    with open("index.html", "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+    print("HTML Seite generiert.")
 
 
 if __name__ == "__main__":
