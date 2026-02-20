@@ -1,0 +1,14 @@
+{
+  "last_price": 525.44,
+  "airline": "Condor",
+  "history": [
+    [
+      "2026-02-20T13:46:20",
+      525.44,
+      "Condor"
+    ]
+  ],
+  "average_price": 525.44,
+  "min_price": 525.44,
+  "max_price": 525.44
+}
