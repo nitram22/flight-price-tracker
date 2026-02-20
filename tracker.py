@@ -83,32 +83,41 @@ def save_price(price):
 
 def analyze_and_plot():
     df = pd.read_csv(CSV_FILE)
+
+    if len(df) == 0:
+        print("Keine Daten vorhanden.")
+        return
+
     df["timestamp"] = pd.to_datetime(df["timestamp"])
+    df["price"] = pd.to_numeric(df["price"], errors="coerce")
+    df = df.dropna()
+
+    if len(df) == 0:
+        print("Keine gültigen Preisdaten.")
+        return
 
     avg_price = df["price"].mean()
     min_price = df["price"].min()
     max_price = df["price"].max()
 
-    # Gleitender Durchschnitt (3 Werte)
     df["moving_avg"] = df["price"].rolling(window=3).mean()
-
-    # Trendlinie
-    x = np.arange(len(df))
-    z = np.polyfit(x, df["price"], 1)
-    trend = np.poly1d(z)
-    df["trend"] = trend(x)
 
     # Plot
     plt.figure()
     plt.plot(df["timestamp"], df["price"])
     plt.plot(df["timestamp"], df["moving_avg"])
-    plt.plot(df["timestamp"], df["trend"])
+
+    if len(df) >= 2:
+        x = np.arange(len(df))
+        z = np.polyfit(x, df["price"], 1)
+        trend = np.poly1d(z)
+        plt.plot(df["timestamp"], trend(x))
+
     plt.xticks(rotation=45)
     plt.tight_layout()
     plt.savefig(CHART_FILE)
     plt.close()
 
-    # JSON für Website
     output = {
         "last_price": float(df["price"].iloc[-1]),
         "average_price": float(avg_price),
