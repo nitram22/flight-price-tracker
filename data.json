@@ -1,6 +1,6 @@
 {
-  "last_price": 525.31,
-  "airline": "Condor",
+  "last_price": 397.31,
+  "airline": "Ryanair",
   "history": [
     [
       "2026-02-20T13:45:56",
@@ -11,9 +11,14 @@
       "2026-02-20T14:05:56",
       525.31,
       "Condor"
+    ],
+    [
+      "2026-02-20T13:31:03",
+      397.31,
+      "Ryanair"
     ]
   ],
-  "average_price": 525.37,
-  "min_price": 525.31,
+  "average_price": 482.69,
+  "min_price": 397.31,
   "max_price": 525.44
 }
