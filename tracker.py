@@ -1,5 +1,6 @@
 import requests
 import os
+import json
 import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime
@@ -111,74 +112,160 @@ def main():
 
     save_price(price)
     analyze_and_plot()
-    generate_html()
+    generate_modern_site()
 
 # =====================================
-# 4️⃣ HTML Seite generieren
+# 4️⃣ JSON + Moderne HTML generieren
 # =====================================
 
-def generate_html():
+def generate_modern_site():
     df = pd.read_csv(CSV_FILE)
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+
     avg_price = df["price"].mean()
+    min_price = df["price"].min()
+    max_price = df["price"].max()
 
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Flight Price Tracker</title>
-        <style>
-            body {{
-                font-family: Arial;
-                margin: 40px;
-                background-color: #f4f4f4;
-            }}
-            h1 {{
-                color: #333;
-            }}
-            table {{
-                border-collapse: collapse;
-                width: 100%;
-                background: white;
-            }}
-            th, td {{
-                border: 1px solid #ddd;
-                padding: 8px;
-                text-align: center;
-            }}
-            th {{
-                background-color: #333;
-                color: white;
-            }}
-            img {{
-                max-width: 100%;
-                height: auto;
-                background: white;
-                padding: 10px;
-            }}
-        </style>
-    </head>
-    <body>
+    # JSON Daten für Chart
+    data_json = {
+        "labels": df["timestamp"].dt.strftime("%Y-%m-%d %H:%M").tolist(),
+        "prices": df["price"].tolist(),
+        "avg": round(avg_price, 2),
+        "min": round(min_price, 2),
+        "max": round(max_price, 2)
+    }
 
-        <h1>Flugpreis Tracker</h1>
-        <h2>STR → FNC (25.05.2026 - 31.05.2026)</h2>
+    with open("data.json", "w") as f:
+        json.dump(data_json, f)
 
-        <p><strong>Durchschnittspreis:</strong> {avg_price:.2f} EUR</p>
+    html_content = """
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flight Price Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #121212;
+    color: white;
+}
+.container {
+    max-width: 1100px;
+    margin: auto;
+    padding: 20px;
+}
+h1 {
+    text-align: center;
+}
+.stats {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 30px;
+}
+.card {
+    flex: 1;
+    min-width: 150px;
+    background: #1f1f1f;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+}
+canvas {
+    background: #1f1f1f;
+    border-radius: 10px;
+    padding: 10px;
+}
+footer {
+    margin-top: 40px;
+    text-align: center;
+    font-size: 12px;
+    opacity: 0.6;
+}
+</style>
+</head>
+<body>
 
-        <h3>Preisentwicklung</h3>
-        <img src="price_chart.png" alt="Preisentwicklung">
+<div class="container">
+    <h1>✈ Flugpreis Tracker</h1>
+    <p style="text-align:center;">STR → FNC (25.05.2026 - 31.05.2026)</p>
 
-        <h3>Historische Daten</h3>
-        {df.to_html(index=False)}
+    <div class="stats">
+        <div class="card">
+            <h3>Durchschnitt</h3>
+            <p id="avg"></p>
+        </div>
+        <div class="card">
+            <h3>Minimum</h3>
+            <p id="min"></p>
+        </div>
+        <div class="card">
+            <h3>Maximum</h3>
+            <p id="max"></p>
+        </div>
+    </div>
 
-    </body>
-    </html>
-    """
+    <canvas id="priceChart"></canvas>
+
+    <footer>
+        Automatisch aktualisiert über GitHub Actions
+    </footer>
+</div>
+
+<script>
+fetch('data.json')
+.then(response => response.json())
+.then(data => {
+
+    document.getElementById("avg").innerText = data.avg + " EUR";
+    document.getElementById("min").innerText = data.min + " EUR";
+    document.getElementById("max").innerText = data.max + " EUR";
+
+    const ctx = document.getElementById('priceChart').getContext('2d');
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                label: 'Preis (EUR)',
+                data: data.prices,
+                borderColor: '#4CAF50',
+                tension: 0.2,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: true }
+            },
+            scales: {
+                x: {
+                    ticks: { color: 'white' }
+                },
+                y: {
+                    ticks: { color: 'white' }
+                }
+            }
+        }
+    });
+
+});
+</script>
+
+</body>
+</html>
+"""
 
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(html_content)
 
-    print("HTML Seite generiert.")
+    print("Moderne Webseite generiert.")
 
 
 if __name__ == "__main__":
