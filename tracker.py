@@ -9,7 +9,7 @@ import requests
 API_HOST = "booking-com15.p.rapidapi.com"
 API_KEY = "DEIN_RAPIDAPI_KEY"
 
-URL = f"https://{API_HOST}/api/v1/flights/searchFlights"
+URL = "https://booking-com15.p.rapidapi.com/api/v1/flights/searchFlights"
 
 PARAMS = {
     "fromId": "FRA.AIRPORT",
