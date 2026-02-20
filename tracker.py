@@ -129,13 +129,17 @@ def analyze_and_plot():
     x = np.arange(len(df))
     y = df["price"].values
 
-    # Lineare Trendlinie
-    z = np.polyfit(x, y, 1)
-    p = np.poly1d(z)
-
     plt.figure(figsize=(10, 6))
     plt.plot(df["date"], y, marker='o', label="Preis")
-    plt.plot(df["date"], p(x), linestyle="--", color="red", label="Trendlinie")
+
+    # ⚠️ Trendlinie nur bei mind. 2 Datenpunkten
+    if len(x) > 1:
+        z = np.polyfit(x, y, 1)
+        p = np.poly1d(z)
+        plt.plot(df["date"], p(x), linestyle="--", color="red", label="Trendlinie")
+    else:
+        print("Zu wenige Daten für Trendlinie, übersprungen.")
+
     plt.xlabel("Datum")
     plt.ylabel("Preis in EUR")
     plt.title("Flugpreis-Entwicklung")
@@ -146,7 +150,6 @@ def analyze_and_plot():
     plt.savefig(CHART_FILE)
     print(f"Chart gespeichert: {CHART_FILE}")
     plt.close()
-
 # ================================
 # 4️⃣ Main
 # ================================
