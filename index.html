@@ -44,13 +44,27 @@ fetch("data.json")
   if(history.length === 0) return;
 
   const lastPrice = parseFloat(history[history.length-1][1]);
-  const prevPrice = history.length > 1 ? parseFloat(history[history.length-2][1]) : lastPrice;
-  const trendUp = lastPrice > prevPrice;
-  const trendArrow = trendUp ? '🔺' : '🔻';
-  const pctChange = ((lastPrice - parseFloat(history[0][1])) / parseFloat(history[0][1]) * 100).toFixed(2);
+  let prevPrice = lastPrice;
+  if(history.length > 1) {
+    prevPrice = parseFloat(history[history.length-2][1]);
+  }
 
+  // Trend Pfeil
+  let trendArrow = '';
+  if(history.length > 1){
+    trendArrow = lastPrice > prevPrice ? '🔺' : (lastPrice < prevPrice ? '🔻' : '➡️');
+  } else {
+    trendArrow = '➡️';
+  }
+
+  // Prozentuale Änderung
+  const pctChange = history.length > 1
+    ? ((lastPrice - parseFloat(history[0][1])) / parseFloat(history[0][1]) * 100).toFixed(2)
+    : 0;
+
+  // DOM aktualisieren
   document.getElementById("last").innerText = lastPrice.toFixed(2);
-  document.getElementById("last").className = trendUp ? 'price red' : 'price green';
+  document.getElementById("last").className = lastPrice > prevPrice ? 'price red' : 'price green';
   document.getElementById("trendArrow").innerText = trendArrow;
   document.getElementById("avg").innerText = data.average_price.toFixed(2);
   document.getElementById("min").innerText = data.min_price.toFixed(2);
@@ -58,8 +72,8 @@ fetch("data.json")
   document.getElementById("pctChange").innerText = pctChange;
 
   // Chart Daten
-  const labels = history.map(x => x[0]); // Datum
-  const prices = history.map(x => parseFloat(x[1])); // Preis pro Person
+  const labels = history.map(x => x[0]);
+  const prices = history.map(x => parseFloat(x[1]));
 
   new Chart(document.getElementById("chart"), {
     type: 'line',
