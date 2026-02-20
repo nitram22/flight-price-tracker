@@ -20,7 +20,7 @@ PARAMS = {
     "toId": "FNC.AIRPORT",
     "departDate": "2026-05-25",
     "returnDate": "2026-05-31",
-    "stops": "none",
+    "stops": "0",
     "pageNo": 1,
     "adults": 2,
     "sort": "BEST",
