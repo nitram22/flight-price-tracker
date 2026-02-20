@@ -1,13 +1,19 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
 <head>
   <meta charset="UTF-8">
   <title>Flight Price Tracker FRA → FNC</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family: Arial; background:#111; color:white; text-align:center; }
-    .card { background:#1e1e1e; padding:20px; margin:20px auto; width:80%; border-radius:10px; }
-    canvas { background:white; border-radius:10px; }
+    body { font-family: Arial, sans-serif; background:#111; color:white; text-align:center; margin:0; padding:0; }
+    h1,h2 { margin: 10px; }
+    .card { background:#1e1e1e; padding:20px; margin:20px auto; width:90%; max-width:800px; border-radius:10px; box-shadow: 0 0 10px #000; }
+    canvas { background:#222; border-radius:10px; }
+    .price { font-size:2em; font-weight:bold; }
+    .green { color:#4caf50; }
+    .red { color:#f44336; }
+    .stats { display:flex; justify-content:space-around; margin-top:10px; }
+    .stats div { text-align:center; }
   </style>
 </head>
 <body>
@@ -16,10 +22,13 @@
 <h2>FRA → FNC (25.05 – 31.05.2026)</h2>
 
 <div class="card">
-  <p>Letzter Preis: <span id="last"></span> €</p>
-  <p>Durchschnitt: <span id="avg"></span> €</p>
-  <p>Min: <span id="min"></span> €</p>
-  <p>Max: <span id="max"></span> €</p>
+  <p>Letzter Preis: <span id="last" class="price"></span> <span id="trendArrow"></span></p>
+  <div class="stats">
+    <div>Durchschnitt<br><span id="avg"></span> €</div>
+    <div>Min<br><span id="min"></span> €</div>
+    <div>Max<br><span id="max"></span> €</div>
+    <div>Änderung<br><span id="pctChange"></span>%</div>
+  </div>
 </div>
 
 <div class="card">
@@ -31,22 +40,49 @@ fetch("data.json")
 .then(res => res.json())
 .then(data => {
 
-  document.getElementById("last").innerText = data.last_price.toFixed(2);
+  const lastPrice = data.last_price;
+  const prevPrice = data.history.length > 1 ? parseFloat(data.history[data.history.length-2][1]) : lastPrice;
+  const trendUp = lastPrice > prevPrice;
+  const trendArrow = trendUp ? '🔺' : '🔻';
+  const pctChange = ((lastPrice - parseFloat(data.history[0][1])) / parseFloat(data.history[0][1]) * 100).toFixed(2);
+
+  document.getElementById("last").innerText = lastPrice.toFixed(2);
+  document.getElementById("last").className = trendUp ? 'price red' : 'price green';
+  document.getElementById("trendArrow").innerText = trendArrow;
   document.getElementById("avg").innerText = data.average_price.toFixed(2);
   document.getElementById("min").innerText = data.min_price.toFixed(2);
   document.getElementById("max").innerText = data.max_price.toFixed(2);
+  document.getElementById("pctChange").innerText = pctChange;
 
-  const labels = data.history.map(x => x[0]);
+  // Chart Daten
+  const labels = data.history.map(x => x[0]); // formatiertes Datum im JSON
   const prices = data.history.map(x => parseFloat(x[1]));
 
   new Chart(document.getElementById("chart"), {
-    type: "line",
+    type: 'line',
     data: {
       labels: labels,
       datasets: [{
-        label: "Preis (EUR)",
-        data: prices
+        label: 'Preis (EUR)',
+        data: prices,
+        borderColor: '#00bcd4',
+        backgroundColor: 'rgba(0,188,212,0.2)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 3
       }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { mode: 'index', intersect: false }
+      },
+      interaction: { mode: 'nearest', axis: 'x', intersect: false },
+      scales: {
+        x: { ticks: { color: 'white' } },
+        y: { ticks: { color: 'white' } }
+      }
     }
   });
 

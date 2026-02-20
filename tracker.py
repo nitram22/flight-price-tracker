@@ -102,29 +102,23 @@ def analyze_and_plot():
 
     df["moving_avg"] = df["price"].rolling(window=3).mean()
 
-    # Plot
-    plt.figure()
-    plt.plot(df["timestamp"], df["price"])
-    plt.plot(df["timestamp"], df["moving_avg"])
-
+    # Trend nur wenn >= 2 Werte
     if len(df) >= 2:
         x = np.arange(len(df))
         z = np.polyfit(x, df["price"], 1)
         trend = np.poly1d(z)
-        plt.plot(df["timestamp"], trend(x))
+        df["trend"] = trend(x)
 
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.savefig(CHART_FILE)
-    plt.close()
+    # Formatiertes Datum für JSON
+    df["date_str"] = df["timestamp"].dt.strftime("%d.%m %H:%M")  # z.B. 20.02 09:16
 
     output = {
         "last_price": float(df["price"].iloc[-1]),
         "average_price": float(avg_price),
         "min_price": float(min_price),
         "max_price": float(max_price),
-        "last_updated": str(datetime.now()),
-        "history": df[["timestamp", "price"]].astype(str).values.tolist()
+        "last_updated": datetime.now().strftime("%d.%m %H:%M"),
+        "history": df[["date_str", "price"]].values.tolist()
     }
 
     with open(JSON_FILE, "w") as f:
