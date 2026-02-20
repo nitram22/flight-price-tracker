@@ -1,5 +1,5 @@
 import csv
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import os
 import requests
@@ -118,7 +118,7 @@ def save_csv(data, file=CSV_FILE):
 # ================================
 def save_json(data, file=JSON_FILE):
     # aktuellen Abrufzeitpunkt
-    now = datetime.now()
+    now = datetime.now() + timedelta(hours=1)
 
     # Preis pro Person berechnen
     price_per_person = round(data["price"] / 2, 2)
