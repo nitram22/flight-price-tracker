@@ -1,4 +1,5 @@
 import csv
+import datetime
 import json
 import os
 import requests
@@ -117,31 +118,31 @@ def save_csv(data, file=CSV_FILE):
 # ================================
 def save_json(data, file=JSON_FILE):
     try:
-        price_per_person = round(data["price"] / 2, 2)
-        date_time = data.get("date_str", "")
-        airline = data.get("airline", "–")
+        now_iso = datetime.now().isoformat(timespec='minutes')  # aktueller Abrufzeitpunkt
+        history_entry = [now_iso, data["price"], data["airline"]]  # Datum + Preis + Airline
 
-        # Bestehende History laden
-        history = []
+        # Alte History laden, falls vorhanden
         if os.path.exists(file):
             with open(file, "r") as f:
-                existing = json.load(f)
-                history = existing.get("history", [])
+                json_data = json.load(f)
+            history = json_data.get("history", [])
+        else:
+            history = []
 
-        history.append([date_time, price_per_person])
-
-        prices = [p[1] for p in history]
-        output = {
-            "last_price": price_per_person,
-            "airline": airline,
+        # Neue History aktualisieren
+        history.append(history_entry)
+        last_price = data["price"]
+        prices = [h[1] for h in history]
+        json_data = {
+            "last_price": last_price,
             "history": history,
-            "average_price": round(sum(prices)/len(prices),2),
-            "min_price": round(min(prices),2),
-            "max_price": round(max(prices),2)
+            "average_price": sum(prices)/len(prices),
+            "min_price": min(prices),
+            "max_price": max(prices)
         }
 
         with open(file, "w") as f:
-            json.dump(output, f, indent=2)
+            json.dump(json_data, f, indent=2)
 
         print("JSON aktualisiert.")
 
