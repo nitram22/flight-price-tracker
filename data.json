@@ -1,5 +1,5 @@
 {
-  "last_price": 525.97,
+  "last_price": 529.31,
   "airline": "Condor",
   "history": [
     [
@@ -31,9 +31,14 @@
       "2026-02-20T19:56:22",
       525.97,
       "Condor"
+    ],
+    [
+      "2026-02-20T21:39:11",
+      529.31,
+      "Condor"
     ]
   ],
-  "average_price": 526.69,
+  "average_price": 527.06,
   "min_price": 525.31,
   "max_price": 529.4
 }
