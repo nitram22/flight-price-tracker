@@ -1,0 +1,22 @@
+name: Deploy GitHub Pages
+
+on:
+  workflow_dispatch:  # Manuelles Ausführen möglich über "Run workflow" in GitHub
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+
+      - name: Setup Node (für GitHub Pages Deployment, optional)
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./  # oder z.B. ./docs, je nachdem wo deine index.html liegt
