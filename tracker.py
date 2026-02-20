@@ -23,8 +23,6 @@ URL = "https://sky-scrapper.p.rapidapi.com/api/v2/flights/searchFlights"
 QUERYSTRING = {
     "originSkyId": "STR",
     "destinationSkyId": "FNC",
-    "originEntityId": "27539733",
-    "destinationEntityId": "27537558",
     "date": "2026-05-25",
     "returnDate": "2026-05-31",
     "cabinClass": "economy",
