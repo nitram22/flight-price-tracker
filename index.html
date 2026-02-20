@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Flight Price Tracker FRA → FNC</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial; background:#111; color:white; text-align:center; }
+    .card { background:#1e1e1e; padding:20px; margin:20px auto; width:80%; border-radius:10px; }
+    canvas { background:white; border-radius:10px; }
+  </style>
+</head>
+<body>
+
+<h1>Flight Price Tracker</h1>
+<h2>FRA → FNC (25.05 – 31.05.2026)</h2>
+
+<div class="card">
+  <p>Letzter Preis: <span id="last"></span> €</p>
+  <p>Durchschnitt: <span id="avg"></span> €</p>
+  <p>Min: <span id="min"></span> €</p>
+  <p>Max: <span id="max"></span> €</p>
+</div>
+
+<div class="card">
+  <canvas id="chart"></canvas>
+</div>
+
+<script>
+fetch("data.json")
+.then(res => res.json())
+.then(data => {
+
+  document.getElementById("last").innerText = data.last_price.toFixed(2);
+  document.getElementById("avg").innerText = data.average_price.toFixed(2);
+  document.getElementById("min").innerText = data.min_price.toFixed(2);
+  document.getElementById("max").innerText = data.max_price.toFixed(2);
+
+  const labels = data.history.map(x => x[0]);
+  const prices = data.history.map(x => parseFloat(x[1]));
+
+  new Chart(document.getElementById("chart"), {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Preis (EUR)",
+        data: prices
+      }]
+    }
+  });
+
+});
+</script>
+
+</body>
+</html>
