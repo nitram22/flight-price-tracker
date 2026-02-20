@@ -44,10 +44,8 @@ fetch("data.json")
   const history = data.history || [];
   if(history.length === 0) return;
 
-  // letzte Preis-Daten
   const lastEntry = history[history.length-1];
   const lastPrice = parseFloat(lastEntry[1]);
-  const lastDateTime = new Date(lastEntry[0]);
   const prevPrice = history.length > 1 ? parseFloat(history[history.length-2][1]) : lastPrice;
   const trendUp = lastPrice > prevPrice;
   const trendArrow = trendUp ? '🔺' : '🔻';
@@ -67,7 +65,7 @@ fetch("data.json")
   document.getElementById("max").innerText = data.max_price.toFixed(2);
   document.getElementById("pctChange").innerText = pctChange;
 
-  // Chart Daten
+  // Chart Labels + Daten
   const labels = history.map(x => {
     const d = new Date(x[0]);
     const day = String(d.getDate()).padStart(2,'0');
@@ -77,6 +75,7 @@ fetch("data.json")
     return `${day}-${month} ${hours}:${minutes}`;
   });
   const prices = history.map(x => parseFloat(x[1]));
+  const airlines = history.map(() => data.airline); // Airline für jeden Punkt
 
   new Chart(document.getElementById("chart"), {
     type: 'line',
@@ -96,7 +95,17 @@ fetch("data.json")
       responsive: true,
       plugins: {
         legend: { display: false },
-        tooltip: { mode: 'index', intersect: false }
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            label: function(context) {
+              const price = context.parsed.y.toFixed(2);
+              const airline = airlines[context.dataIndex];
+              return `Preis: ${price} € | Airline: ${airline}`;
+            }
+          }
+        }
       },
       interaction: { mode: 'nearest', axis: 'x', intersect: false },
       scales: {
@@ -105,7 +114,6 @@ fetch("data.json")
       }
     }
   });
-
 });
 </script>
 
