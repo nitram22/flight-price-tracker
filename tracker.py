@@ -1,126 +1,117 @@
 import requests
+import os
 import pandas as pd
 import matplotlib.pyplot as plt
-import time
-from datetime import datetime, timedelta
-import os
+from datetime import datetime
+import csv
+import sys
 
-# ==============================
-# API KONFIGURATION
-# ==============================
+# =====================================
+# API CONFIG
+# =====================================
 
-API_HOST = "DEIN_API_HOST"
-API_KEY = "DEIN_API_KEY"
+API_HOST = os.getenv("API_HOST")
+API_KEY = os.getenv("API_KEY")
 
-HEADERS = {
-    "X-RapidAPI-Host": API_HOST,
-    "X-RapidAPI-Key": API_KEY
+if not API_KEY:
+    print("API_KEY nicht gesetzt!")
+    sys.exit(1)
+
+URL = "https://sky-scrapper.p.rapidapi.com/api/v2/flights/searchFlights"
+
+QUERYSTRING = {
+    "originSkyId": "STR",
+    "destinationSkyId": "FNC",
+    "originEntityId": "27539733",       # ggf prüfen
+    "destinationEntityId": "27537558",  # ggf prüfen
+    "departureDate": "2026-05-25",
+    "returnDate": "2026-05-31",
+    "cabinClass": "economy",
+    "adults": "1",
+    "sortBy": "best",
+    "currency": "EUR",
+    "market": "de-DE",
+    "countryCode": "DE"
 }
 
-BASE_URL = "https://apiheya/api/sky-scrapper/flights"
-
-origin = "STR"
-destination = "FNC"
-depart_date = "2026-05-25"
-return_date = "2026-05-31"
+HEADERS = {
+    "x-rapidapi-key": API_KEY,
+    "x-rapidapi-host": API_HOST
+}
 
 CSV_FILE = "flight_prices.csv"
+CHART_FILE = "price_chart.png"
 
-# ==============================
-# FUNKTION ZUM ABRUFEN
-# ==============================
+# =====================================
+# 1️⃣ Preis abrufen
+# =====================================
 
-def get_price():
-    params = {
-        "origin": origin,
-        "destination": destination,
-        "departDate": depart_date,
-        "returnDate": return_date
-    }
-
-    response = requests.get(BASE_URL, headers=HEADERS, params=params)
+def fetch_price():
+    response = requests.get(URL, headers=HEADERS, params=QUERYSTRING)
     response.raise_for_status()
     data = response.json()
 
-    # Preis extrahieren (anpassen falls API anders strukturiert ist)
-    price = data["data"][0]["price"]
+    try:
+        price = data["data"]["itineraries"][0]["price"]["raw"]
+        return float(price)
+    except (KeyError, IndexError):
+        print("Preis konnte nicht extrahiert werden.")
+        print(data)
+        return None
 
-    return price
-
-# ==============================
-# SPEICHERN DER DATEN
-# ==============================
+# =====================================
+# 2️⃣ Preis speichern
+# =====================================
 
 def save_price(price):
-    now = datetime.now()
+    with open(CSV_FILE, mode="a", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow([datetime.now(), price])
 
-    df = pd.DataFrame([{
-        "timestamp": now,
-        "price": price
-    }])
+# =====================================
+# 3️⃣ Durchschnitt & Chart
+# =====================================
 
-    if not os.path.isfile(CSV_FILE):
-        df.to_csv(CSV_FILE, index=False)
-    else:
-        df.to_csv(CSV_FILE, mode='a', header=False, index=False)
-
-# ==============================
-# AUSWERTUNG
-# ==============================
-
-def analyze_data():
-    df = pd.read_csv(CSV_FILE)
+def analyze_and_plot():
+    df = pd.read_csv(CSV_FILE, header=None, names=["timestamp", "price"])
     df["timestamp"] = pd.to_datetime(df["timestamp"])
 
     avg_price = df["price"].mean()
-    print(f"\nDurchschnittspreis über 5 Tage: {avg_price:.2f} €")
+
+    print(f"\nDurchschnittspreis: {avg_price:.2f} EUR")
+    print(f"Min Preis: {df['price'].min():.2f} EUR")
+    print(f"Max Preis: {df['price'].max():.2f} EUR")
 
     plt.figure()
     plt.plot(df["timestamp"], df["price"])
     plt.xlabel("Zeit")
-    plt.ylabel("Preis (€)")
+    plt.ylabel("Preis (EUR)")
     plt.title("Preisentwicklung STR → FNC")
     plt.xticks(rotation=45)
     plt.tight_layout()
-    plt.show()
+    plt.savefig(CHART_FILE)
+    plt.close()
 
-# ==============================
-# HAUPTSCHLEIFE (5 TAGE)
-# ==============================
+    print("Chart gespeichert als:", CHART_FILE)
 
-def run_tracker():
-    start_time = datetime.now()
-    end_time = start_time + timedelta(days=5)
+# =====================================
+# MAIN
+# =====================================
 
-    requests_per_day = 4
-    interval_hours = 24 / requests_per_day   # = 6 Stunden
-    interval_seconds = interval_hours * 3600
+def main():
+    print("Starte Preisabfrage:", datetime.now())
 
-    total_requests = 0
+    price = fetch_price()
 
-    while datetime.now() < end_time and total_requests < 20:
-        try:
-            print(f"Abfrage #{total_requests + 1} - {datetime.now()}")
-            price = get_price()
-            print(f"Gefundener Preis: {price} €")
+    if price is None:
+        print("Kein Preis gespeichert.")
+        return
 
-            save_price(price)
-            total_requests += 1
+    print("Gefundener Preis:", price, "EUR")
 
-        except Exception as e:
-            print("Fehler bei API-Abfrage:", e)
+    save_price(price)
+    analyze_and_plot()
 
-        if total_requests >= 20:
-            break
-
-        time.sleep(interval_seconds)
-
-    print("\nTracking abgeschlossen.")
-    analyze_data()
-
-# ==============================
-# START
-# ==============================
 
 if __name__ == "__main__":
-    run_tracker()
+    main()

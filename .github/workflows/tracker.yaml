@@ -1,0 +1,28 @@
+name: Flight Tracker
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # alle 6 Stunden
+  workflow_dispatch:
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v3
+
+      - name: Python installieren
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Abhängigkeiten installieren
+        run: pip install -r requirements.txt
+
+      - name: Script ausführen
+        env:
+          API_HOST: ${{ secrets.API_HOST }}
+          API_KEY: ${{ secrets.API_KEY }}
+        run: python tracker.py
