@@ -22,7 +22,7 @@
 <h2>FRA → FNC (25.05 – 31.05.2026)</h2>
 
 <div class="card">
-  <p>Letzter Preis: <span id="last" class="price"></span> <span id="trendArrow"></span></p>
+  <p>Letzter Preis pro Person: <span id="last" class="price"></span> € <span id="trendArrow"></span></p>
   <div class="stats">
     <div>Durchschnitt<br><span id="avg"></span> €</div>
     <div>Min<br><span id="min"></span> €</div>
@@ -40,11 +40,14 @@ fetch("data.json")
 .then(res => res.json())
 .then(data => {
 
-  const lastPrice = data.last_price;
-  const prevPrice = data.history.length > 1 ? parseFloat(data.history[data.history.length-2][1]) : lastPrice;
+  const history = data.history || [];
+  if(history.length === 0) return;
+
+  const lastPrice = parseFloat(history[history.length-1][1]);
+  const prevPrice = history.length > 1 ? parseFloat(history[history.length-2][1]) : lastPrice;
   const trendUp = lastPrice > prevPrice;
   const trendArrow = trendUp ? '🔺' : '🔻';
-  const pctChange = ((lastPrice - parseFloat(data.history[0][1])) / parseFloat(data.history[0][1]) * 100).toFixed(2);
+  const pctChange = ((lastPrice - parseFloat(history[0][1])) / parseFloat(history[0][1]) * 100).toFixed(2);
 
   document.getElementById("last").innerText = lastPrice.toFixed(2);
   document.getElementById("last").className = trendUp ? 'price red' : 'price green';
@@ -55,15 +58,15 @@ fetch("data.json")
   document.getElementById("pctChange").innerText = pctChange;
 
   // Chart Daten
-  const labels = data.history.map(x => x[0]); // formatiertes Datum im JSON
-  const prices = data.history.map(x => parseFloat(x[1]));
+  const labels = history.map(x => x[0]); // Datum
+  const prices = history.map(x => parseFloat(x[1])); // Preis pro Person
 
   new Chart(document.getElementById("chart"), {
     type: 'line',
     data: {
       labels: labels,
       datasets: [{
-        label: 'Preis (EUR)',
+        label: 'Preis pro Person (EUR)',
         data: prices,
         borderColor: '#00bcd4',
         backgroundColor: 'rgba(0,188,212,0.2)',

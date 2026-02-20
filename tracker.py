@@ -1,16 +1,18 @@
 import csv
 import json
 import os
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import requests
 
+# ==============================
+# 0️⃣ Konfiguration
+# ==============================
 API_HOST = "booking-com15.p.rapidapi.com"
 API_KEY = os.getenv("API_KEY")
 
-URL = f"https://booking-com15.p.rapidapi.com/api/v1/flights/searchFlights"
+URL = f"https://{API_HOST}/api/v1/flights/searchFlights"
 
 PARAMS = {
     "fromId": "FRA.AIRPORT",
@@ -34,9 +36,9 @@ CSV_FILE = "flight_prices.csv"
 JSON_FILE = "data.json"
 CHART_FILE = "price_chart.png"
 
-# ================================
+# ==============================
 # 1️⃣ Preis abrufen
-# ================================
+# ==============================
 def fetch_price(params=PARAMS):
     try:
         response = requests.get(URL, headers=HEADERS, params=params, timeout=15)
@@ -55,7 +57,7 @@ def fetch_price(params=PARAMS):
         print("Keine Flugangebote gefunden.")
         return None
 
-    # exact departDate filtern
+    # genaues departDate filtern
     offer_today = None
     for offer in flight_offers:
         depart_date = offer["segments"][0]["departureTime"].split("T")[0]
@@ -76,17 +78,20 @@ def fetch_price(params=PARAMS):
     nanos = price_total.get("nanos", 0)
     total_price = units + nanos / 1_000_000_000
 
+    # Preis pro Person berechnen
+    per_person_price = total_price / PARAMS["adults"]
+
     airline = offer_today["segments"][0]["legs"][0]["carriersData"][0]["name"]
 
     return {
         "date_str": offer_today["segments"][0]["departureTime"].split("T")[0],
-        "price": round(total_price, 2),
+        "price": round(per_person_price, 2),
         "airline": airline
     }
 
-# ================================
-# 2️⃣ CSV + JSON speichern
-# ================================
+# ==============================
+# 2️⃣ CSV speichern
+# ==============================
 def save_csv(data, file=CSV_FILE):
     fieldnames = ["date", "price", "airline"]
     try:
@@ -99,21 +104,45 @@ def save_csv(data, file=CSV_FILE):
                 "price": data["price"],
                 "airline": data["airline"]
             })
-        print(f"Preis gespeichert: {data['price']} EUR am {data['date_str']}")
+        print(f"Preis pro Person gespeichert: {data['price']} EUR am {data['date_str']}")
     except Exception as e:
         print("Fehler beim Speichern CSV:", e)
 
+# ==============================
+# 3️⃣ JSON speichern (Chart-kompatibel)
+# ==============================
 def save_json(data, file=JSON_FILE):
+    history = []
+    if os.path.exists(file):
+        try:
+            with open(file, "r") as f:
+                old_data = json.load(f)
+                history = old_data.get("history", [])
+        except:
+            history = []
+
+    # neuen Eintrag anhängen
+    history.append([data["date_str"], data["price"]])
+
+    prices = [p[1] for p in history]
+    json_data = {
+        "last_price": data["price"],
+        "history": history,
+        "average_price": sum(prices)/len(prices),
+        "min_price": min(prices),
+        "max_price": max(prices)
+    }
+
     try:
         with open(file, "w") as f:
-            json.dump(data, f, indent=2)
+            json.dump(json_data, f, indent=2)
         print("JSON aktualisiert.")
     except Exception as e:
         print("Fehler beim Speichern JSON:", e)
 
-# ================================
-# 3️⃣ Analyse + Chart
-# ================================
+# ==============================
+# 4️⃣ Analyse + Chart
+# ==============================
 def analyze_and_plot():
     try:
         df = pd.read_csv(CSV_FILE, parse_dates=["date"])
@@ -130,19 +159,20 @@ def analyze_and_plot():
     y = df["price"].values
 
     plt.figure(figsize=(10, 6))
-    plt.plot(df["date"], y, marker='o', label="Preis")
+    plt.plot(df["date"], y, marker='o', label="Preis pro Person")
 
-    # ⚠️ Trendlinie nur bei mind. 2 Datenpunkten
-    if len(x) > 1:
-        z = np.polyfit(x, y, 1)
-        p = np.poly1d(z)
-        plt.plot(df["date"], p(x), linestyle="--", color="red", label="Trendlinie")
-    else:
-        print("Zu wenige Daten für Trendlinie, übersprungen.")
+    # Trendlinie nur, wenn mehr als 1 Punkt
+    if len(df) > 1:
+        try:
+            z = np.polyfit(x, y, 1)
+            p = np.poly1d(z)
+            plt.plot(df["date"], p(x), linestyle="--", color="red", label="Trendlinie")
+        except np.linalg.LinAlgError as e:
+            print("Trendlinie konnte nicht berechnet werden:", e)
 
     plt.xlabel("Datum")
-    plt.ylabel("Preis in EUR")
-    plt.title("Flugpreis-Entwicklung")
+    plt.ylabel("Preis in EUR pro Person")
+    plt.title("Flugpreis-Entwicklung pro Person")
     plt.xticks(rotation=45)
     plt.grid(True)
     plt.legend()
@@ -150,9 +180,10 @@ def analyze_and_plot():
     plt.savefig(CHART_FILE)
     print(f"Chart gespeichert: {CHART_FILE}")
     plt.close()
-# ================================
-# 4️⃣ Main
-# ================================
+
+# ==============================
+# 5️⃣ Main
+# ==============================
 def main():
     result = fetch_price()
     if result:
